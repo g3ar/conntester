@@ -2,6 +2,7 @@
 Application for monitoring internet connection
 """
 import sys
+import os
 import configparser
 from time import sleep
 from statistics import mean
@@ -16,6 +17,14 @@ from PyQt5.QtWidgets import (
     QLabel
 )
 
+
+def resource_path(relative_path):
+    """
+    Loads resourse from app path on prod on source path on dev
+    """
+    if hasattr(sys, '_MEIPASS'):
+        return os.path.join(sys._MEIPASS, relative_path)
+    return os.path.join(os.path.abspath("."), relative_path)
 
 class ConnTester():
     """
@@ -34,7 +43,7 @@ class ConnTester():
         self.interval = int(self.config.get('MAIN', 'interval'))
         self.history = int(self.config.get('MAIN', 'history'))
         self.app = QApplication(sys.argv)
-        self.icon = QIcon("icon.png")
+        self.icon = QIcon(resource_path("icon.png"))
         self.tray = QSystemTrayIcon()
         self.window = MainWindow()
         self.window.setWindowIcon(self.icon)
@@ -51,10 +60,16 @@ class ConnTester():
             'started': started,
             'time': delay
         })
+        self.process_results()
+
+    def process_results(self):
+        """
+        Update state based on results
+        """
         info = "\n".join([
-            f"Mean {self.get_mean_ping()}ms",
-            f"Last {self.get_last_ping()}ms",
-            f"Loss {self.get_loss_ping()}%",
+            f"Mean {self.get_mean_ping()} ms",
+            f"Last {self.get_last_ping()} ms",
+            f"Loss {self.get_loss_ping()} %",
         ])
         self.tray.setToolTip(info)
         self.window.set_label(info)
