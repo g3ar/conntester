@@ -51,7 +51,7 @@ class ConnTester():
             'started': started,
             'time': delay
         })
-        info = f"Mean ping {self.get_mean_ping()}\nLast ping {self.get_last_ping()}"
+        info = f"Mean ping {self.get_mean_ping()}ms\nLast ping {self.get_last_ping()}ms"
         self.tray.setToolTip(info)
         self.window.set_label(info)
 
@@ -69,13 +69,15 @@ class ConnTester():
         """
         if len(self.results) == 0:
             return 999
-        return mean([r["time"] for r in self.results])
+        m_ping = mean([r["time"] for r in self.results])
+        return int(round(m_ping, 0))
 
     def get_last_ping(self):
         """
         Get last ping time in ms
         """
-        return self.results[-1]["time"]
+        l_ping = self.results[-1]["time"]
+        return int(round(l_ping, 0))
 
     def init_interface(self):
         """
@@ -127,6 +129,7 @@ class MainWindow(QMainWindow):
         self.label = QLabel("Ping...")
         self.label.setAlignment(Qt.AlignCenter)
         self.setCentralWidget(self.label)
+        self.setGeometry(0, 0, 150, 50)
 
     def set_label(self, text):
         """
