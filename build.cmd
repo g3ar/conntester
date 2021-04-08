@@ -1,7 +1,7 @@
 rmdir /S /Q dist
 pipenv run pyinstaller ^
---window --onefile --icon=icon.ico ^
---add-data="icon.png;." ^
+--window --onefile --icon=images\icon.ico ^
+--add-data="images\*;images" ^
 conntester.py
 rmdir /S /Q build
 del conntester.spec

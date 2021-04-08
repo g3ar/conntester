@@ -26,6 +26,12 @@ def resource_path(relative_path):
         return os.path.join(sys._MEIPASS, relative_path)  # pylint: disable=no-member,protected-access
     return os.path.join(os.path.abspath("."), relative_path)
 
+def resource_image(image):
+    """
+    Loads resourse image
+    """
+    return resource_path(os.path.join("images", image))
+
 class ConnTester():
     """
     Main application class
@@ -35,6 +41,12 @@ class ConnTester():
     timeout = 1
     interval = 1
     results = []
+    STATUS = {
+        'GOOD': 0,
+        'BAD': 1,
+        'LOST': 2,
+    }
+    STATUS_QICONS = {}
 
     def __init__(self):
         self.config.read('conntester.ini')
@@ -42,13 +54,25 @@ class ConnTester():
         self.timeout = int(self.config.get('MAIN', 'timeout'))
         self.interval = int(self.config.get('MAIN', 'interval'))
         self.history = int(self.config.get('MAIN', 'history'))
+        self.ping_tresh = int(self.config.get('MAIN', 'ping_tresh'))
+        self.loss_tresh = int(self.config.get('MAIN', 'loss_tresh'))
         self.app = QApplication(sys.argv)
-        self.icon = QIcon(resource_path("icon.png"))
-        self.tray = QSystemTrayIcon()
+        self.icon = QIcon(resource_image("icon.png"))
         self.window = MainWindow()
+        self.tray = QSystemTrayIcon(parent=self.window)
         self.window.setWindowIcon(self.icon)
         self.ping_thread = Thread(target=self.init_timer)
         self.ping_running = False
+        self.load_status_icons()
+        self.current_status = 0
+        self.current_tray_icon = 0
+
+    def load_status_icons(self):
+        """
+        Loads icons from resourses
+        """
+        for (name, code) in self.STATUS.items():
+            self.STATUS_QICONS[code] = QIcon(resource_image(name.lower()))
 
     def ping(self):
         """
@@ -72,7 +96,17 @@ class ConnTester():
             f"Loss {self.get_loss_ping()} %",
         ])
         self.tray.setToolTip(info)
+        self.get_overall_status()
+        self.update_tray_icon()
         self.window.set_label(info)
+
+    def update_tray_icon(self):
+        """
+        Change icon on status change
+        """
+        if self.current_status != self.current_tray_icon:
+            self.tray.setIcon(self.STATUS_QICONS[self.current_status])
+            self.current_tray_icon = self.current_status
 
     def add_result(self, res):
         """
@@ -117,13 +151,45 @@ class ConnTester():
         loss = sum(r["time"] is None for r in self.results) / len(self.results) * 100
         return int(round(loss, 0))
 
+    def get_ping_status(self):
+        """
+        Ping status
+        """
+        mean_ping = self.get_mean_ping()
+        if mean_ping is None:
+            return self.STATUS['LOST']
+        if  mean_ping > self.ping_tresh:
+            return self.STATUS['BAD']
+        return self.STATUS['GOOD']
+
+    def get_loss_status(self):
+        """
+        Loss status
+        """
+        loss = self.get_loss_ping()
+        if loss is None:
+            return self.STATUS['LOST']
+        if  loss > self.loss_tresh:
+            return self.STATUS['BAD']
+        return self.STATUS['GOOD']
+
+    def get_overall_status(self):
+        """
+        Overall status
+        """
+        self.current_status = max([
+            self.get_loss_status(),
+            self.get_ping_status(),
+        ])
+        return self.current_status
+
     def init_interface(self):
         """
         Init tray icon and interface
         """
         self.app.setQuitOnLastWindowClosed(False)
-        self.tray.setIcon(self.icon)
-        self.tray.setVisible(True)
+        self.tray.setIcon(self.STATUS_QICONS[0])
+        self.tray.show()
         self.tray.activated.connect(self.window.toggle)
         menu = QMenu()
         quit_a = QAction("Quit")
