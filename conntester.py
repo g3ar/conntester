@@ -3,11 +3,10 @@ Application for monitoring internet connection
 """
 import sys
 import configparser
-import queue
 from time import sleep
 from statistics import mean
 from datetime import datetime
-from threading import Timer
+from threading import Thread
 
 from ping3 import ping as p3p
 from PyQt5.QtGui import QIcon
@@ -26,17 +25,21 @@ class ConnTester():
     host = "8.8.8.8"
     timeout = 1
     interval = 1
-    results = queue.Queue(60)
+    results = []
 
     def __init__(self):
         self.config.read('conntester.ini')
         self.host = self.config.get('MAIN', 'host')
         self.timeout = int(self.config.get('MAIN', 'timeout'))
         self.interval = int(self.config.get('MAIN', 'interval'))
+        self.history = int(self.config.get('MAIN', 'history'))
         self.app = QApplication(sys.argv)
         self.icon = QIcon("icon.png")
         self.tray = QSystemTrayIcon()
         self.window = MainWindow()
+        self.window.setWindowIcon(self.icon)
+        self.ping_thread = Thread(target=self.init_timer)
+        self.ping_running = False
 
     def ping(self):
         """
@@ -56,23 +59,23 @@ class ConnTester():
         """
         Add result to queue
         """
-        if self.results.full():
-            self.results.get()
-        self.results.put(res)
+        if len(self.results) > self.history:
+            self.results.pop(0)
+        self.results.append(res)
 
     def get_mean_ping(self):
         """
         Calculate mean ping time in ms
         """
-        if self.results.empty():
+        if len(self.results) == 0:
             return 999
-        return mean([r["time"] for r in list(self.results.queue)])
+        return mean([r["time"] for r in self.results])
 
     def get_last_ping(self):
         """
         Get last ping time in ms
         """
-        return list(self.results.queue)[-1]["time"]
+        return self.results[-1]["time"]
 
     def init_interface(self):
         """
@@ -87,21 +90,30 @@ class ConnTester():
         quit_a.triggered.connect(self.app.quit)
         menu.addAction(quit_a)
         self.tray.setContextMenu(menu)
-        self.app.exec_()
+        self.app.aboutToQuit.connect(self.stop)
+        sys.exit(self.app.exec_())
 
     def init_timer(self):
         """
-        Init ping timer
+        Ping loop
         """
-        self.ping()
-        Timer(self.interval, self.init_timer).start()
+        self.ping_running = True
+        while self.ping_running:
+            Thread(target=self.ping).start()
+            sleep(self.interval)
 
     def run(self):
         """
         Entry point
         """
+        self.ping_thread.start()
         self.init_interface()
-        self.init_timer()
+
+    def stop(self):
+        """
+        Exit point
+        """
+        self.ping_running = False
 
 
 class MainWindow(QMainWindow):
@@ -112,7 +124,7 @@ class MainWindow(QMainWindow):
     def __init__(self, *args, **kwargs):
         super(MainWindow, self).__init__(*args, **kwargs)
         self.setWindowTitle("ConnTester")
-        self.label = QLabel()
+        self.label = QLabel("Ping...")
         self.label.setAlignment(Qt.AlignCenter)
         self.setCentralWidget(self.label)
 
@@ -123,11 +135,14 @@ class MainWindow(QMainWindow):
         self.label.setText(text)
         self.label.repaint()
 
-    def toggle(self):
+    def toggle(self, reason):
         """
         Toggle window visibility
         """
-        self.setVisible(not self.isVisible())
+        if reason == QSystemTrayIcon.ActivationReason.DoubleClick: # pylint: disable=no-member
+            self.setVisible(not self.isVisible())
+            if self.isVisible():
+                self.activateWindow()
 
 
 if __name__ == '__main__':
