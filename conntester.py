@@ -10,12 +10,15 @@ from datetime import datetime
 from threading import Thread
 
 from ping3 import ping as p3p
+
 from PyQt5.QtGui import QIcon
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (
     QApplication, QSystemTrayIcon, QMenu, QAction, QMainWindow,
-    QLabel, QDesktopWidget
+    QDesktopWidget
 )
+
+from mainwindow import Ui_MainWindow
 
 
 def resource_path(relative_path):
@@ -98,7 +101,11 @@ class ConnTester():
         self.tray.setToolTip(info)
         self.get_overall_status()
         self.update_tray_icon()
-        self.window.set_label(info)
+        self.window.set_labels(
+            self.get_mean_ping(),
+            self.get_last_ping(),
+            self.get_loss_ping(),
+        )
 
     def update_tray_icon(self):
         """
@@ -222,7 +229,7 @@ class ConnTester():
         self.ping_running = False
 
 
-class MainWindow(QMainWindow):
+class MainWindow(QMainWindow, Ui_MainWindow):
     """
     Main application window
     """
@@ -231,10 +238,7 @@ class MainWindow(QMainWindow):
     MARGIN = 5
     def __init__(self, *args, **kwargs):
         super(MainWindow, self).__init__(*args, **kwargs)
-        self.setWindowTitle("ConnTester")
-        self.label = QLabel("Ping...")
-        self.label.setAlignment(Qt.AlignCenter)
-        self.setCentralWidget(self.label)
+        self.setupUi(self)
         self.setWindowFlag(Qt.WindowStaysOnTopHint)
         self.position_to_dock()
 
@@ -244,18 +248,26 @@ class MainWindow(QMainWindow):
         """
         desktop_geometry = QDesktopWidget().availableGeometry()
         self.setGeometry(
-            desktop_geometry.width() - self.WIDTH - self.MARGIN,
-            desktop_geometry.height() - self.HEIGHT - self.MARGIN,
-            self.WIDTH,
-            self.HEIGHT
+            desktop_geometry.width() - self.width() - self.MARGIN,
+            desktop_geometry.height() - self.height() - self.MARGIN,
+            self.width(),
+            self.height()
         )
 
-    def set_label(self, text):
+    def set_labels(self, mean_=None, curr=None, loss=None):
         """
         Update window text
         """
-        self.label.setText(text)
-        self.label.repaint()
+        mean_text = curr_text = loss_text = "No connection"
+        if mean_ is not None:
+            mean_text = f"Mean ping: {mean_}ms"
+        if curr is not None:
+            curr_text = f"Last ping: {curr}ms"
+        if loss is not None:
+            loss_text = f"Ping loss: {loss}%"
+        self.meanLabel.setText(mean_text)
+        self.currLabel.setText(curr_text)
+        self.lossLabel.setText(loss_text)
 
     def toggle(self, reason):
         """
