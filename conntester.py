@@ -10,13 +10,13 @@ from datetime import datetime
 from threading import Thread
 
 from ping3 import ping as p3p
-
-from PyQt5.QtGui import QIcon
-from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QIcon, QPainter
+from PyQt5.QtCore import Qt, QDateTime
 from PyQt5.QtWidgets import (
     QApplication, QSystemTrayIcon, QMenu, QAction, QMainWindow,
     QDesktopWidget
 )
+from PyQt5.QtChart import QChart, QLineSeries, QDateTimeAxis, QValueAxis
 
 from mainwindow import Ui_MainWindow
 
@@ -61,7 +61,7 @@ class ConnTester():
         self.loss_tresh = int(self.config.get('MAIN', 'loss_tresh'))
         self.app = QApplication(sys.argv)
         self.icon = QIcon(resource_image("icon.png"))
-        self.window = MainWindow()
+        self.window = MainWindow(self.host)
         self.tray = QSystemTrayIcon(parent=self.window)
         self.window.setWindowIcon(self.icon)
         self.ping_thread = Thread(target=self.init_timer)
@@ -83,10 +83,12 @@ class ConnTester():
         """
         started = datetime.now()
         delay = p3p(self.host, timeout=self.timeout, unit='ms')
-        self.add_result({
+        res = {
             'started': started,
             'time': delay
-        })
+        }
+        self.add_result(res)
+        self.window.add_series(res)
         self.process_results()
 
     def process_results(self):
@@ -236,11 +238,51 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     WIDTH = 150
     HEIGHT = 50
     MARGIN = 5
-    def __init__(self, *args, **kwargs):
+    def __init__(self, host, *args, **kwargs):
         super(MainWindow, self).__init__(*args, **kwargs)
+        self.host = host
         self.setupUi(self)
         self.setWindowFlag(Qt.WindowStaysOnTopHint)
         self.position_to_dock()
+        self.series = QLineSeries()
+        self.chart = QChart()
+        self.chart.addSeries(self.series)
+        self.chart.setTitle(f"Connection to {self.host}")
+        self.chart.setAnimationOptions(QChart.SeriesAnimations)
+        axisX = QDateTimeAxis()
+        axisX.setTickCount(4)
+        axisX.setFormat("HH:mm:ss")
+        axisX.setTitleText("Time")
+        axisX.setRange(QDateTime.currentDateTime().addSecs(-120), QDateTime.currentDateTime())
+        self.chart.setAxisX(axisX, self.series)
+        # self.series.attachAxis(axisX)
+        axisY = QValueAxis()
+        axisY.setLabelFormat("%i")
+        axisY.setTitleText("Delay")
+        self.chart.addAxis(axisY, Qt.AlignLeft)
+        self.chart.setAxisY(axisY, self.series)
+        # self.series.attachAxis(axisY)
+        self.chart.legend().setVisible(True)
+        self.chart.legend().setAlignment(Qt.AlignBottom)
+        self.chartWidget.setChart(self.chart)
+        self.chartWidget.setRenderHint(QPainter.Antialiasing)
+
+    def add_series(self, data):
+        """
+        Append series data
+        """
+        # FIXME!!!1111
+        self.series.append(QDateTime.currentDateTime().toMSecsSinceEpoch(), data["time"])
+        self.chart.scroll(10, 0)
+        self.chart.axisX().setRange(QDateTime.currentDateTime().addSecs(-120), QDateTime.currentDateTime())
+
+    def set_series(self, data):
+        """
+        Replace series data
+        """
+        self.series.clear()
+        for d_point in data.items():
+            self.series.append(d_point["started"].timestamp * 1000, d_point["time"])
 
     def position_to_dock(self):
         """

@@ -12,6 +12,7 @@ pyinstaller = "*"
 ping3 = "*"
 pyqt5 = "*"
 sip = "*"
+pyqtchart = "*"
 
 [requires]
 python_version = "3.7"
