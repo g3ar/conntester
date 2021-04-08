@@ -67,20 +67,30 @@ class ConnTester():
             self.results.pop(0)
         self.results.append(res)
 
+    def get_responses(self):
+        """
+        Filter pings without response
+        """
+        return list(filter(lambda r: r["time"] is not None, self.results))
+
     def get_mean_ping(self):
         """
         Calculate mean ping time in ms
         """
-        if len(self.results) == 0:
-            return 999
-        m_ping = mean([r["time"] for r in self.results])
+        responses = self.get_responses()
+        if len(responses) == 0:
+            return None
+        m_ping = mean([r["time"] for r in responses])
         return int(round(m_ping, 0))
 
     def get_last_ping(self):
         """
         Get last ping time in ms
         """
-        l_ping = self.results[-1]["time"]
+        responses = self.get_responses()
+        if len(responses) == 0:
+            return None
+        l_ping = responses[-1]["time"]
         return int(round(l_ping, 0))
 
     def get_loss_ping(self):
@@ -89,7 +99,7 @@ class ConnTester():
         """
         if len(self.results) == 0:
             return 0
-        loss = sum(r["time"] is None for r in self.results) / len(self.results)
+        loss = sum(r["time"] is None for r in self.results) / len(self.results) * 100
         return int(round(loss, 0))
 
     def init_interface(self):
@@ -143,6 +153,7 @@ class MainWindow(QMainWindow):
         self.label.setAlignment(Qt.AlignCenter)
         self.setCentralWidget(self.label)
         self.setGeometry(0, 0, 150, 50)
+        self.setWindowFlag(Qt.WindowStaysOnTopHint)
 
     def set_label(self, text):
         """
