@@ -14,7 +14,7 @@ from PyQt5.QtGui import QIcon
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (
     QApplication, QSystemTrayIcon, QMenu, QAction, QMainWindow,
-    QLabel
+    QLabel, QDesktopWidget
 )
 
 
@@ -160,15 +160,29 @@ class MainWindow(QMainWindow):
     """
     Main application window
     """
-
+    WIDTH = 150
+    HEIGHT = 50
+    MARGIN = 5
     def __init__(self, *args, **kwargs):
         super(MainWindow, self).__init__(*args, **kwargs)
         self.setWindowTitle("ConnTester")
         self.label = QLabel("Ping...")
         self.label.setAlignment(Qt.AlignCenter)
         self.setCentralWidget(self.label)
-        self.setGeometry(0, 0, 150, 50)
         self.setWindowFlag(Qt.WindowStaysOnTopHint)
+        self.position_to_dock()
+
+    def position_to_dock(self):
+        """
+        Adjust main window position according to it's size and desktop
+        """
+        desktop_geometry = QDesktopWidget().availableGeometry()
+        self.setGeometry(
+            desktop_geometry.width() - self.WIDTH - self.MARGIN,
+            desktop_geometry.height() - self.HEIGHT - self.MARGIN,
+            self.WIDTH,
+            self.HEIGHT
+        )
 
     def set_label(self, text):
         """
