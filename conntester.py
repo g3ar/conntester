@@ -51,7 +51,11 @@ class ConnTester():
             'started': started,
             'time': delay
         })
-        info = f"Mean ping {self.get_mean_ping()}ms\nLast ping {self.get_last_ping()}ms"
+        info = "\n".join([
+            f"Mean {self.get_mean_ping()}ms",
+            f"Last {self.get_last_ping()}ms",
+            f"Loss {self.get_loss_ping()}%",
+        ])
         self.tray.setToolTip(info)
         self.window.set_label(info)
 
@@ -78,6 +82,15 @@ class ConnTester():
         """
         l_ping = self.results[-1]["time"]
         return int(round(l_ping, 0))
+
+    def get_loss_ping(self):
+        """
+        Get lost ping percent
+        """
+        if len(self.results) == 0:
+            return 0
+        loss = sum(r["time"] is None for r in self.results) / len(self.results)
+        return int(round(loss, 0))
 
     def init_interface(self):
         """
