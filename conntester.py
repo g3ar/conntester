@@ -262,7 +262,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.chart.addSeries(self.series_delay)
         self.chart.addSeries(self.series_loss)
         self.chart.setTitle(f"Connection to {self.host}")
-        self.chart.setAnimationOptions(QChart.SeriesAnimations)
         self.init_series(self.series_delay, "Delay ms")
         self.init_series(self.series_loss, "Loss %")
         self.chart.legend().setVisible(False)
