@@ -238,6 +238,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     WIDTH = 150
     HEIGHT = 50
     MARGIN = 5
+    max_delay = 50
     def __init__(self, host, *args, **kwargs):
         super(MainWindow, self).__init__(*args, **kwargs)
         self.host = host
@@ -255,13 +256,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         axisX.setTitleText("Time")
         axisX.setRange(QDateTime.currentDateTime().addSecs(-120), QDateTime.currentDateTime())
         self.chart.setAxisX(axisX, self.series)
-        # self.series.attachAxis(axisX)
         axisY = QValueAxis()
         axisY.setLabelFormat("%i")
         axisY.setTitleText("Delay")
         self.chart.addAxis(axisY, Qt.AlignLeft)
         self.chart.setAxisY(axisY, self.series)
-        # self.series.attachAxis(axisY)
         self.chart.legend().setVisible(True)
         self.chart.legend().setAlignment(Qt.AlignBottom)
         self.chartWidget.setChart(self.chart)
@@ -271,10 +270,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         """
         Append series data
         """
-        # FIXME!!!1111
+        self.max_delay = max(data["time"], self.max_delay)
         self.series.append(QDateTime.currentDateTime().toMSecsSinceEpoch(), data["time"])
-        self.chart.scroll(10, 0)
         self.chart.axisX().setRange(QDateTime.currentDateTime().addSecs(-120), QDateTime.currentDateTime())
+        self.chart.axisY().setRange(0, self.max_delay + self.MARGIN)
 
     def set_series(self, data):
         """
