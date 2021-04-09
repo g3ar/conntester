@@ -13,6 +13,7 @@ ping3 = "*"
 pyqt5 = "*"
 sip = "*"
 pyqtchart = "*"
+simpleaudio = "*"
 
 [requires]
 python_version = "3.7"

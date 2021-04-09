@@ -17,6 +17,7 @@ from PyQt5.QtWidgets import (
     QDesktopWidget
 )
 from PyQt5.QtChart import QChart, QLineSeries, QDateTimeAxis, QValueAxis
+import simpleaudio as sa
 
 from mainwindow import Ui_MainWindow
 
@@ -29,11 +30,17 @@ def resource_path(relative_path):
         return os.path.join(sys._MEIPASS, relative_path)  # pylint: disable=no-member,protected-access
     return os.path.join(os.path.abspath("."), relative_path)
 
-def resource_image(image):
+def resource_image(name):
     """
     Loads resourse image
     """
-    return resource_path(os.path.join("images", image))
+    return resource_path(os.path.join("images", name))
+
+def resource_sound(name):
+    """
+    Loads resourse sound
+    """
+    return resource_path(os.path.join("sounds", name))
 
 class ConnTester():
     """
@@ -50,6 +57,7 @@ class ConnTester():
         'LOST': 2,
     }
     STATUS_QICONS = {}
+    STATUS_SOUNDS = {}
 
     def __init__(self):
         self.config.read('conntester.ini')
@@ -60,6 +68,8 @@ class ConnTester():
         self.history_size = int(self.history / self.interval)
         self.ping_tresh = int(self.config.get('MAIN', 'ping_tresh'))
         self.loss_tresh = int(self.config.get('MAIN', 'loss_tresh'))
+        self.loss_tresh_lost = int(self.config.get('MAIN', 'loss_tresh_lost'))
+        self.sound_enable = int(self.config.get('MAIN', 'sound_enable'))
         self.app = QApplication(sys.argv)
         self.icon = QIcon(resource_image("icon.png"))
         self.window = MainWindow(self.host, self.history, self.history_size)
@@ -68,6 +78,7 @@ class ConnTester():
         self.ping_thread = Thread(target=self.init_timer)
         self.ping_running = False
         self.load_status_icons()
+        self.load_status_sounds()
         self.current_status = 0
         self.current_tray_icon = 0
 
@@ -77,6 +88,13 @@ class ConnTester():
         """
         for (name, code) in self.STATUS.items():
             self.STATUS_QICONS[code] = QIcon(resource_image(name.lower()))
+    
+    def load_status_sounds(self):
+        """
+        Loads sound locations
+        """
+        for (name, code) in self.STATUS.items():
+            self.STATUS_SOUNDS[code] = resource_sound(f"{name.lower()}.wav")
 
     def ping(self):
         """
@@ -102,7 +120,6 @@ class ConnTester():
         ])
         self.tray.setToolTip(info)
         self.get_overall_status()
-        self.update_tray_icon()
         self.window.set_labels(
             self.get_mean_ping(),
             self.get_last_ping(),
@@ -113,13 +130,11 @@ class ConnTester():
             self.get_loss_ping()
         )
 
-    def update_tray_icon(self):
+    def update_tray_icon(self, status):
         """
-        Change icon on status change
+        Change tray icon
         """
-        if self.current_status != self.current_tray_icon:
-            self.tray.setIcon(self.STATUS_QICONS[self.current_status])
-            self.current_tray_icon = self.current_status
+        self.tray.setIcon(self.STATUS_QICONS[status])
 
     def add_result(self, res):
         """
@@ -180,7 +195,7 @@ class ConnTester():
         Loss status
         """
         loss = self.get_loss_ping()
-        if loss is None:
+        if loss > self.loss_tresh_lost:
             return self.STATUS['LOST']
         if  loss > self.loss_tresh:
             return self.STATUS['BAD']
@@ -190,11 +205,32 @@ class ConnTester():
         """
         Overall status
         """
-        self.current_status = max([
+        new_status = max([
             self.get_loss_status(),
             self.get_ping_status(),
         ])
+        if self.current_status != new_status:
+            self.process_status_change(self.current_status, new_status)
+            self.current_status = new_status
         return self.current_status
+    
+    def process_status_change(self, old_status, new_status):
+        """
+        Actions on status change
+        """
+        self.play_sound(new_status)
+        self.update_tray_icon(new_status)
+    
+    def play_sound(self, status):
+        """
+        Play sound
+        """
+        def _play(snd):
+            wave = sa.WaveObject.from_wave_file(resource_sound(snd))
+            play_obj = wave.play()
+            play_obj.wait_done()
+        name = self.STATUS_SOUNDS[status]
+        Thread(target=_play, args=(name,)).start()
 
     def init_interface(self):
         """
@@ -288,11 +324,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         """
         Append series data
         """
-        self.max_ping = max(ping, self.max_ping)
+        self.max_ping = max(ping or 0, self.max_ping)
         self.max_loss = max(loss, self.max_loss)
         if self.series_delay.count() > self.history_size:
             self.series_delay.remove(0)
-        self.series_delay.append(QDateTime.currentDateTime().toMSecsSinceEpoch(), ping)
+        self.series_delay.append(QDateTime.currentDateTime().toMSecsSinceEpoch(), ping or 0)
         if self.series_loss.count() > self.history_size:
             self.series_loss.remove(0)
         self.series_loss.append(QDateTime.currentDateTime().toMSecsSinceEpoch(), loss)

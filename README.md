@@ -20,7 +20,9 @@ pipenv shell
 pipenv install --dev
 python ./conntester.py
 ```
-## TODO
-* Add notifications on quality change
+## Usage
+Hint of tray icon shows current stats. Tray icon color indicates 
+current status. Double click on tray on tray icon toggles visibility 
+of graph window. All settings located and explained in conntester.ini.
 ## License
 GPLv3
