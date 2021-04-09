@@ -251,13 +251,18 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.position_to_dock()
         self.series_delay = QLineSeries()
         self.series_loss = QLineSeries()
+        self.axis_X = QDateTimeAxis() # pylint: disable=invalid-name
+        self.axis_X.setTickCount(3)
+        self.axis_X.setFormat("HH:mm")
+        self.axis_X.setTitleText("Time")
+        self.axis_X.setRange(QDateTime.currentDateTime().addSecs(-120), QDateTime.currentDateTime())
         self.chart = QChart()
         self.chart.addSeries(self.series_delay)
         self.chart.addSeries(self.series_loss)
         self.chart.setTitle(f"Connection to {self.host}")
         self.chart.setAnimationOptions(QChart.SeriesAnimations)
         self.init_series(self.series_delay, "Delay ms")
-        self.init_series(self.series_loss, "Loss %", False)
+        self.init_series(self.series_loss, "Loss %")
         self.chart.legend().setVisible(False)
         self.chart.legend().setAlignment(Qt.AlignBottom)
         self.chart.layout().setContentsMargins(0, 0, 0, 0)
@@ -266,18 +271,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.chartWidget.setChart(self.chart)
         self.chartWidget.setRenderHint(QPainter.Antialiasing)
 
-    def init_series(self, series, label, add_x=True):
+    def init_series(self, series, label):
         """
         Series settings
         """
-        axis_X = QDateTimeAxis() # pylint: disable=invalid-name
-        axis_X.setTickCount(3)
-        axis_X.setFormat("HH:mm")
-        axis_X.setTitleText("Time")
-        axis_X.setRange(QDateTime.currentDateTime().addSecs(-120), QDateTime.currentDateTime())
-        if add_x:
-            self.chart.setAxisX(axis_X, series)
-            self.chart.addAxis(axis_X, Qt.AlignBottom)
+        self.chart.setAxisX(self.axis_X, series)
+        self.chart.addAxis(self.axis_X, Qt.AlignBottom)
         axis_Y = QValueAxis() # pylint: disable=invalid-name
         axis_Y.setLabelFormat("%i")
         axis_Y.setTitleText(label)
@@ -293,7 +292,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.max_loss = max(loss, self.max_loss)
         self.series_delay.append(QDateTime.currentDateTime().toMSecsSinceEpoch(), ping)
         self.series_loss.append(QDateTime.currentDateTime().toMSecsSinceEpoch(), loss)
-        self.chart.axisX().setRange(
+        self.axis_X.setRange(
             QDateTime.currentDateTime().addSecs(-120),
             QDateTime.currentDateTime()
         )
