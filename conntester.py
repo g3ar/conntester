@@ -288,6 +288,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         """
         Append series data
         """
+        # TODO: cleanup series if has more data than self.history
         self.max_ping = max(ping, self.max_ping)
         self.max_loss = max(loss, self.max_loss)
         self.series_delay.append(QDateTime.currentDateTime().toMSecsSinceEpoch(), ping)
