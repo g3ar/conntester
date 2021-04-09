@@ -2,10 +2,10 @@
 
 rm -rf dist
 pipenv run pyinstaller \
-    --window --onefile --icon=images/icon.ico \
+    --window --icon=images/icon.ico \
     --add-data="images/*:images" \
     --add-data="sounds/*:sounds" \
     conntester.py
 rm -rf build
 rm conntester.spec
-cp conntester.ini dist/
+cp conntester.ini dist/conntester/
