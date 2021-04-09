@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+
+rm -rf dist
+pipenv run pyinstaller \
+    --window --onefile --icon=images/icon.ico \
+    --add-data="images/*:images" \
+    conntester.py
+rm -rf build
+rm conntester.spec
+cp conntester.ini dist/
