@@ -293,6 +293,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.max_loss = max(loss, self.max_loss)
         self.series_delay.append(QDateTime.currentDateTime().toMSecsSinceEpoch(), ping)
         self.series_loss.append(QDateTime.currentDateTime().toMSecsSinceEpoch(), loss)
+        # TODO: set range according to self.history * self.interval
         self.axis_X.setRange(
             QDateTime.currentDateTime().addSecs(-120),
             QDateTime.currentDateTime()
