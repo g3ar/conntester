@@ -22,7 +22,7 @@ python ./conntester.py
 ```
 ## Usage
 Hint of tray icon shows current stats. Tray icon color indicates 
-current status. Double click on tray on tray icon toggles visibility 
+current status. Double click on tray icon toggles visibility 
 of graph window. All settings located and explained in conntester.ini.
 ## License
 GPLv3
