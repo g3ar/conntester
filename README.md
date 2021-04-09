@@ -6,16 +6,22 @@ connection quality. Develped using python, pyqt5.
 ## Run from binary
 Unpack release to any directory you want, edit conntester.ini to 
 fit your needs and run conntester binary.
+### Linux run
+In linux you must allow raw sockets for conntester binary.
+```
+sudo setcap cap_net_raw+ep /path/to/conntester.bin
+```
 ## Run from source
 ```
 git clone https://github.com/g3ar/conntester.git
-pipenv install --dev
+cd conntester
+pipenv --python 3.7
 pipenv shell
+pipenv install --dev
 python ./conntester.py
 ```
 ## TODO
 * Code cleanup
-* Add linux build
 * Add notifications on quality change
 ## License
 GPLv3
