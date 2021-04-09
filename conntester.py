@@ -11,7 +11,7 @@ from threading import Thread
 
 from ping3 import ping as p3p
 from PyQt5.QtGui import QIcon, QPainter
-from PyQt5.QtCore import Qt, QDateTime
+from PyQt5.QtCore import Qt, QDateTime, QMargins
 from PyQt5.QtWidgets import (
     QApplication, QSystemTrayIcon, QMenu, QAction, QMainWindow,
     QDesktopWidget
@@ -88,7 +88,6 @@ class ConnTester():
             'time': delay
         }
         self.add_result(res)
-        self.window.add_series(res)
         self.process_results()
 
     def process_results(self):
@@ -107,6 +106,10 @@ class ConnTester():
             self.get_mean_ping(),
             self.get_last_ping(),
             self.get_loss_ping(),
+        )
+        self.window.add_series(
+            self.get_last_ping(),
+            self.get_loss_ping()
         )
 
     def update_tray_icon(self):
@@ -238,50 +241,63 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     WIDTH = 150
     HEIGHT = 50
     MARGIN = 5
-    max_delay = 50
+    max_ping = 0
+    max_loss = 0
     def __init__(self, host, *args, **kwargs):
         super(MainWindow, self).__init__(*args, **kwargs)
         self.host = host
         self.setupUi(self)
         self.setWindowFlag(Qt.WindowStaysOnTopHint)
         self.position_to_dock()
-        self.series = QLineSeries()
+        self.series_delay = QLineSeries()
+        self.series_loss = QLineSeries()
         self.chart = QChart()
-        self.chart.addSeries(self.series)
+        self.chart.addSeries(self.series_delay)
+        self.chart.addSeries(self.series_loss)
         self.chart.setTitle(f"Connection to {self.host}")
         self.chart.setAnimationOptions(QChart.SeriesAnimations)
-        axisX = QDateTimeAxis()
-        axisX.setTickCount(4)
-        axisX.setFormat("HH:mm:ss")
-        axisX.setTitleText("Time")
-        axisX.setRange(QDateTime.currentDateTime().addSecs(-120), QDateTime.currentDateTime())
-        self.chart.setAxisX(axisX, self.series)
-        axisY = QValueAxis()
-        axisY.setLabelFormat("%i")
-        axisY.setTitleText("Delay")
-        self.chart.addAxis(axisY, Qt.AlignLeft)
-        self.chart.setAxisY(axisY, self.series)
-        self.chart.legend().setVisible(True)
+        self.init_series(self.series_delay, "Delay ms")
+        self.init_series(self.series_loss, "Loss %", False)
+        self.chart.legend().setVisible(False)
         self.chart.legend().setAlignment(Qt.AlignBottom)
+        self.chart.layout().setContentsMargins(0, 0, 0, 0)
+        self.chart.setBackgroundRoundness(0)
+        self.chart.setMargins(QMargins(0,0,0,0))
         self.chartWidget.setChart(self.chart)
         self.chartWidget.setRenderHint(QPainter.Antialiasing)
 
-    def add_series(self, data):
+    def init_series(self, series, label, add_x=True):
+        """
+        Series settings
+        """
+        axis_X = QDateTimeAxis() # pylint: disable=invalid-name
+        axis_X.setTickCount(3)
+        axis_X.setFormat("HH:mm")
+        axis_X.setTitleText("Time")
+        axis_X.setRange(QDateTime.currentDateTime().addSecs(-120), QDateTime.currentDateTime())
+        if add_x:
+            self.chart.setAxisX(axis_X, series)
+            self.chart.addAxis(axis_X, Qt.AlignBottom)
+        axis_Y = QValueAxis() # pylint: disable=invalid-name
+        axis_Y.setLabelFormat("%i")
+        axis_Y.setTitleText(label)
+        axis_Y.setRange(0, 100)
+        self.chart.addAxis(axis_Y, Qt.AlignLeft)
+        self.chart.setAxisY(axis_Y, series)
+
+    def add_series(self, ping, loss):
         """
         Append series data
         """
-        self.max_delay = max(data["time"], self.max_delay)
-        self.series.append(QDateTime.currentDateTime().toMSecsSinceEpoch(), data["time"])
-        self.chart.axisX().setRange(QDateTime.currentDateTime().addSecs(-120), QDateTime.currentDateTime())
-        self.chart.axisY().setRange(0, self.max_delay + self.MARGIN)
-
-    def set_series(self, data):
-        """
-        Replace series data
-        """
-        self.series.clear()
-        for d_point in data.items():
-            self.series.append(d_point["started"].timestamp * 1000, d_point["time"])
+        self.max_ping = max(ping, self.max_ping)
+        self.max_loss = max(loss, self.max_loss)
+        self.series_delay.append(QDateTime.currentDateTime().toMSecsSinceEpoch(), ping)
+        self.series_loss.append(QDateTime.currentDateTime().toMSecsSinceEpoch(), loss)
+        self.chart.axisX().setRange(
+            QDateTime.currentDateTime().addSecs(-120),
+            QDateTime.currentDateTime()
+        )
+        self.chart.axisY().setRange(0, self.max_ping + self.MARGIN)
 
     def position_to_dock(self):
         """
