@@ -21,7 +21,6 @@ pipenv install --dev
 python ./conntester.py
 ```
 ## TODO
-* Code cleanup
 * Add notifications on quality change
 ## License
 GPLv3
