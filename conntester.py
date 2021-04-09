@@ -57,11 +57,12 @@ class ConnTester():
         self.timeout = int(self.config.get('MAIN', 'timeout'))
         self.interval = int(self.config.get('MAIN', 'interval'))
         self.history = int(self.config.get('MAIN', 'history'))
+        self.history_size = int(self.history / self.interval)
         self.ping_tresh = int(self.config.get('MAIN', 'ping_tresh'))
         self.loss_tresh = int(self.config.get('MAIN', 'loss_tresh'))
         self.app = QApplication(sys.argv)
         self.icon = QIcon(resource_image("icon.png"))
-        self.window = MainWindow(self.host)
+        self.window = MainWindow(self.host, self.history, self.history_size)
         self.tray = QSystemTrayIcon(parent=self.window)
         self.window.setWindowIcon(self.icon)
         self.ping_thread = Thread(target=self.init_timer)
@@ -124,7 +125,7 @@ class ConnTester():
         """
         Add result to queue
         """
-        if len(self.results) > self.history:
+        if len(self.results) > self.history_size:
             self.results.pop(0)
         self.results.append(res)
 
@@ -243,9 +244,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     MARGIN = 5
     max_ping = 0
     max_loss = 0
-    def __init__(self, host, *args, **kwargs):
+    def __init__(self, host, history, history_size, *args, **kwargs):
         super(MainWindow, self).__init__(*args, **kwargs)
         self.host = host
+        self.history = history
+        self.history_size = history_size
         self.setupUi(self)
         self.setWindowFlag(Qt.WindowStaysOnTopHint)
         self.position_to_dock()
@@ -255,7 +258,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.axis_X.setTickCount(3)
         self.axis_X.setFormat("HH:mm")
         self.axis_X.setTitleText("Time")
-        self.axis_X.setRange(QDateTime.currentDateTime().addSecs(-120), QDateTime.currentDateTime())
         self.chart = QChart()
         self.chart.addSeries(self.series_delay)
         self.chart.addSeries(self.series_loss)
@@ -276,7 +278,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         Series settings
         """
         self.chart.setAxisX(self.axis_X, series)
-        self.chart.addAxis(self.axis_X, Qt.AlignBottom)
         axis_Y = QValueAxis() # pylint: disable=invalid-name
         axis_Y.setLabelFormat("%i")
         axis_Y.setTitleText(label)
@@ -288,14 +289,16 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         """
         Append series data
         """
-        # TODO: cleanup series if has more data than self.history
         self.max_ping = max(ping, self.max_ping)
         self.max_loss = max(loss, self.max_loss)
+        if self.series_delay.count() > self.history_size:
+            self.series_delay.remove(0)
         self.series_delay.append(QDateTime.currentDateTime().toMSecsSinceEpoch(), ping)
+        if self.series_loss.count() > self.history_size:
+            self.series_loss.remove(0)
         self.series_loss.append(QDateTime.currentDateTime().toMSecsSinceEpoch(), loss)
-        # TODO: set range according to self.history * self.interval
         self.axis_X.setRange(
-            QDateTime.currentDateTime().addSecs(-120),
+            QDateTime.currentDateTime().addSecs(-self.history),
             QDateTime.currentDateTime()
         )
         self.chart.axisY().setRange(0, self.max_ping + self.MARGIN)
